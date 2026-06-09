@@ -11,7 +11,7 @@ url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
-# --- 2. ÇOKLU KULLANICI PROFİL GİRİŞİ (YENİ EKLENTİ) ---
+# --- 2. ÇOKLU KULLANICI PROFİL GİRİŞİ ---
 st.sidebar.title("👤 Profil Girişi")
 username_input = st.sidebar.text_input("Kullanıcı Adınız:", value="").strip().lower()
 
@@ -131,7 +131,7 @@ if 'current_user' not in st.session_state or st.session_state.current_user != st
     st.session_state.show_answer = False
     st.session_state.current_user = st.session_state.username
 
-# --- YENİ TASARIM: ÜST BİLGİ PANELİ (SOL: BAŞLIK, SAĞ: MASKOT) ---
+# --- ÜST BİLGİ PANELİ ---
 col_sol, col_sag = st.columns([3, 1])
 
 with col_sol:
@@ -159,30 +159,42 @@ with col_sag:
 
 st.divider()
 
-# --- 6. SOL MENÜ (SIDEBAR): FOTOĞRAF YÜKLEME ---
+# --- 6. SOL MENÜ (SIDEBAR): FOTOĞRAF VEYA PDF YÜKLEME ---
 with st.sidebar:
-    st.header("📸 Yeni Not Ekle")
+    st.header("📸 Yeni Not / PDF Ekle")
     ders_girdisi = st.text_input("Ders Adı (Örn: Anatomi, Biyokimya)", value="Genel")
-    uploaded_file = st.file_uploader("Bir fotoğraf yükleyin", type=["png", "jpg", "jpeg"])
+    
+    # type parametresine 'pdf' dosya türünü ekledik
+    uploaded_file = st.file_uploader("Bir fotoğraf veya PDF dosyası yükleyin", type=["png", "jpg", "jpeg", "pdf"])
     
     if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Yüklenen Not", use_container_width=True) 
+        file_bytes = uploaded_file.getvalue()
+        mime_type = uploaded_file.type
+        
+        # Arayüzde önizleme kontrolü
+        if mime_type.startswith("image/"):
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Yüklenen Not", use_container_width=True) 
+        elif mime_type == "application/pdf":
+            st.info("📄 PDF Dosyası Başarıyla Yüklendi. Yapay zeka dökümanı analiz edecek.")
         
         if st.button("Soruları Üret 🚀"):
             prompt = """
-            Bu görsel bir tıp öğrencisinin ders notudur. En önemli bilgileri tespit et ve Soru-Cevap formatında hazırla.
-            Eğer görsel çok karmaşıksa, el yazısı okunamayacak kadar kötüyse veya tıbbi terimleri çıkaramıyorsan SADECE "REJECT" yaz.
+            Bu döküman bir tıp öğrencisinin ders notudur veya sunumudur. En önemli bilgileri tespit et ve Soru-Cevap formatında hazırla.
+            Eğer döküman çok karmaşıksa, el yazısı okunamayacak kadar kötüyse veya tıbbi terimleri çıkaramıyorsan SADECE "REJECT" yaz.
             Eğer okuyabiliyorsan çıktıyı SADECE aşağıdaki gibi geçerli bir JSON formatında ver, başka hiçbir açıklama yazma:
             [
               {"soru": "1. soru metni", "cevap": "1. cevap metni"}
             ]
             """
-            with st.spinner("Not okunuyor..."):
+            with st.spinner("Döküman okunuyor..."):
+                # Dosya verisini ve mime_type bilgisini sözlük yapısında hazırlıyoruz
+                file_part = {"data": file_bytes, "mime_type": mime_type}
+                
                 try:
                     response_flash = client.models.generate_content(
                         model='gemini-3-flash-preview',
-                        contents=[prompt, image]
+                        contents=[prompt, file_part]
                     )
                     raw_text = response_flash.text.strip()
                     if "REJECT" in raw_text:
@@ -204,7 +216,7 @@ with st.sidebar:
                     try:
                         response_pro = client.models.generate_content(
                             model='gemini-2.5-flash',
-                            contents=[prompt, image]
+                            contents=[prompt, file_part]
                         )
                         raw_text_pro = response_pro.text.replace('```json', '').replace('```', '').strip()
                         yeni_kartlar = json.loads(raw_text_pro)
@@ -268,6 +280,6 @@ if len(st.session_state.flashcards) > 0:
             st.rerun()
 else:
     if get_total_card_count(st.session_state.username) == 0:
-        st.info(f"👋 Med Brain'e Hoş Geldin {st.session_state.username.capitalize()}! Şu an destende hiç kart yok. Sol menüden ilk tıp notunu yükleyerek maceraya başla! 🚀")
+        st.info(f"👋 Med Brain'e Hoş Geldin {st.session_state.username.capitalize()}! Şu an destende hiç kart yok. Sol menüden ilk tıp notunu veya PDF'ini yükleyerek maceraya başla! 🚀")
     else:
         st.success("Tebrikler! Bugünlük zamanı gelen tüm kartları bitirdiniz. 🎉 Mükemmel ilerliyorsun!")
