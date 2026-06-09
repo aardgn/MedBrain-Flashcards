@@ -1,14 +1,19 @@
 import streamlit as st
 from supabase import create_client, Client
 import datetime
+import google.generativeai as genai
+from PIL import Image
 
 # Sayfa Yapılandırması
 st.set_page_config(page_title="MedBrain Flashcards", page_icon="🧠", layout="centered")
 
-# Supabase Bağlantısı
+# Supabase ve Gemini Bağlantıları
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
+
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+model = genai.GenerativeModel('gemini-3.1-flash')
 
 # Giriş Ekranı (Sol Menü)
 st.sidebar.title("👤 Profil Girişi")
@@ -19,10 +24,9 @@ if not username_input:
     st.info("Hoş geldiniz! Çalışmaya başlamak için lütfen sol menüden kendinize bir kullanıcı adı belirleyin veya mevcut adınızı girin.")
     st.stop()
 
-# Kullanıcı adı girildiyse session_state'e kaydet
 st.session_state.username = username_input
 
-# Veritabanından Kullanıcı Verilerini Çekme Fonksiyonları
+# Veritabanından Kullanıcı Verilerini Çekme
 def load_user_data(username):
     cards_resp = supabase.table("cards").select("*").eq("username", username).execute()
     stats_resp = supabase.table("stats").select("*").eq("username", username).execute()
@@ -35,7 +39,6 @@ def load_user_data(username):
         
     return cards_resp.data, user_stats
 
-# Verileri Yükle
 if "current_user" not in st.session_state or st.session_state.current_user != st.session_state.username:
     cards, stats = load_user_data(st.session_state.username)
     st.session_state.flashcards = cards
@@ -44,18 +47,50 @@ if "current_user" not in st.session_state or st.session_state.current_user != st
     st.session_state.card_index = 0
     st.session_state.show_answer = False
 
-# Ana Uygulama Ekranı
 st.title(f"🧠 {st.session_state.username.capitalize()} Profili")
 
-# Sol Menü Bilgileri
 st.sidebar.write(f"🔥 Güncel Seri: {st.session_state.stats.get('streak', 0)} Gün")
 st.sidebar.divider()
 
-# Yeni Kart Ekleme Bölümü
-with st.sidebar.expander("➕ Yeni Kart Ekle"):
+# YENİ EKLENEN KISIM: Fotoğraf Yükleme ve Yapay Zeka Entegrasyonu
+with st.sidebar.expander("📸 Yapay Zeka ile Kart Ekle", expanded=True):
+    uploaded_file = st.file_uploader("Notunuzun fotoğrafını yükleyin", type=["png", "jpg", "jpeg"])
+    ai_ders = st.text_input("Ders (Örn: Anatomi):", value="Genel", key="ai_ders")
+    
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Yüklenen Not", use_container_width=True)
+        
+        if st.button("✨ Soruyu ve Cevabı Çıkar"):
+            with st.spinner("Gemini notları okuyor..."):
+                try:
+                    prompt = "Bu tıbbi not fotoğrafındaki en önemli bilgiyi bul ve flashcard için uygun bir 'Soru' ve kısa bir 'Cevap' çıkar. Lütfen sadece şu formatta yanıt ver:\nSoru: [Soru buraya]\nCevap: [Cevap buraya]"
+                    response = model.generate_content([prompt, image])
+                    
+                    text = response.text
+                    soru_kismi = text.split("Soru:")[1].split("Cevap:")[0].strip() if "Soru:" in text else text
+                    cevap_kismi = text.split("Cevap:")[1].strip() if "Cevap:" in text else "Otomatik çıkarılamadı."
+                    
+                    yeni_kart = {
+                        "username": st.session_state.username,
+                        "soru": soru_kismi,
+                        "cevap": cevap_kismi,
+                        "ders": ai_ders
+                    }
+                    resp = supabase.table("cards").insert(yeni_kart).execute()
+                    
+                    if resp.data:
+                        st.success("Yapay zeka kartı başarıyla ekledi!")
+                        st.session_state.flashcards.append(resp.data[0])
+                        
+                except Exception as e:
+                    st.error(f"Yapay zeka ile işlem yaparken bir hata oluştu: {e}")
+
+# Manuel Ekleme Seçeneği
+with st.sidebar.expander("✍️ Manuel Kart Ekle"):
     yeni_soru = st.text_area("Soru:")
     yeni_cevap = st.text_area("Cevap:")
-    yeni_ders = st.text_input("Ders (Örn: Anatomi):", value="Genel")
+    yeni_ders = st.text_input("Ders (Örn: Anatomi):", value="Genel", key="manuel_ders")
     if st.button("Kartı Kaydet"):
         if yeni_soru and yeni_cevap:
             yeni_kart = {
@@ -98,21 +133,4 @@ else:
             
     with col2:
         if st.button("✅ Bildim (Sonra Sor)"):
-            supabase.table("cards").update({"durum": "ogrenildi"}).eq("id", kart["id"]).execute()
-            
-            bugun = str(datetime.date.today())
-            if st.session_state.stats["son_calisma"] != bugun:
-                yeni_streak = st.session_state.stats["streak"] + 1
-                supabase.table("stats").update({"streak": yeni_streak, "son_calisma": bugun}).eq("username", st.session_state.username).execute()
-                st.session_state.stats["streak"] = yeni_streak
-                st.session_state.stats["son_calisma"] = bugun
-            
-            st.session_state.card_index = (st.session_state.card_index + 1) % len(st.session_state.flashcards)
-            st.session_state.show_answer = False
-            st.rerun()
-
-    with col3:
-        if st.button("❌ Bilemedim (Tekrar Göster)"):
-            st.session_state.card_index = (st.session_state.card_index + 1) % len(st.session_state.flashcards)
-            st.session_state.show_answer = False
-            st.rerun()
+            supabase.table("cards").update({"durum": "ogren
