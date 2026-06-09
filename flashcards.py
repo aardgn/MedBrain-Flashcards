@@ -62,9 +62,9 @@ with st.sidebar.expander("📸 Yapay Zeka ile Kart Ekle", expanded=True):
         st.image(image, caption="Yüklenen Not", use_container_width=True)
         
         if st.button("✨ Soruyu ve Cevabı Çıkar"):
-            with st.spinner("Gemini notları okuyor..."):
+            with st.spinner("Notlar okunuyor..."):
                 try:
-                    prompt = "Bu tıbbi not fotoğrafındaki en önemli bilgiyi bul ve flashcard için uygun bir 'Soru' ve kısa bir 'Cevap' çıkar. Lütfen sadece şu formatta yanıt ver:\nSoru: [Soru buraya]\nCevap: [Cevap buraya]"
+                    prompt = "Bu tıp ders notu fotoğrafındaki en önemli bilgiyi bul ve tıp sınavlarında sorulabilecek sorular için flashcard için uygun bir 'Soru' ve kısa bir 'Cevap' çıkar. Lütfen sadece şu formatta yanıt ver:\nSoru: [Soru buraya]\nCevap: [Cevap buraya]"
                     response = model.generate_content([prompt, image])
                     
                     text = response.text
