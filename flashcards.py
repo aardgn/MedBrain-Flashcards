@@ -1,262 +1,118 @@
-import streamlit as st 
-from PIL import Image
-from google import genai
-import json
-import time
+import streamlit as st
 from supabase import create_client, Client
-from datetime import date, timedelta
+import datetime
 
-# --- 1. BULUT BAĞLANTISI ---
+# Sayfa Yapılandırması
+st.set_page_config(page_title="MedBrain Flashcards", page_icon="🧠", layout="centered")
+
+# Supabase Bağlantısı
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
-# Sıralama url, key şeklinde olmalıdır
 supabase: Client = create_client(url, key)
 
-# --- 2. VERİTABANI FONKSİYONLARI (SUPABASE) ---
-def get_streak_info():
-    try:
-        response = supabase.table("stats").select("streak, son_calisma").eq("id", 1).execute()
-        if response.data:
-            streak = response.data[0]['streak']
-            son_calisma = response.data[0]['son_calisma']
-        else:
-            streak = 0
-            son_calisma = '2000-01-01'
-    except:
-        streak = 0
-        son_calisma = '2000-01-01'
+# Giriş Ekranı (Sol Menü)
+st.sidebar.title("👤 Profil Girişi")
+username_input = st.sidebar.text_input("Kullanıcı Adınız:", value="").strip().lower()
 
-    bugun_str = date.today().isoformat()
-    gunu_kurtardi_mi = (son_calisma == bugun_str)
-    return streak, gunu_kurtardi_mi
+if not username_input:
+    st.title("🧠 MedBrain Flashcards")
+    st.info("Hoş geldiniz! Çalışmaya başlamak için lütfen sol menüden kendinize bir kullanıcı adı belirleyin veya mevcut adınızı girin.")
+    st.stop()
 
-def update_streak():
-    try:
-        response = supabase.table("stats").select("streak, son_calisma").eq("id", 1).execute()
-        if response.data:
-            mevcut_streak = response.data[0]['streak']
-            son_calisma = response.data[0]['son_calisma']
-        else:
-            mevcut_streak = 0
-            son_calisma = '2000-01-01'
-        
-        bugun = date.today().isoformat()
-        
-        if son_calisma != bugun:
-            dun = (date.today() - timedelta(days=1)).isoformat()
-            yeni_streak = mevcut_streak + 1 if son_calisma == dun else 1
-            
-            supabase.table("stats").upsert({"id": 1, "streak": yeni_streak, "son_calisma": bugun}).execute()
-    except Exception as e:
-        st.error(f"Seri güncellenirken hata: {e}")
+# Kullanıcı adı girildiyse session_state'e kaydet
+st.session_state.username = username_input
 
-def add_cards_to_db(cards, ders_adi):
-    for card in cards:
-        supabase.table("cards").insert({
-            "soru": card['soru'], 
-            "cevap": card['cevap'], 
-            "ders": ders_adi,
-            "durum": "yeni",
-            "sonraki_tekrar": 0,
-            "aralik": 0
-        }).execute()
-
-def delete_cards_from_db(card_id):
-    supabase.table("cards").delete().eq("id", card_id).execute()
-
-def get_total_card_count():
-    response = supabase.table("cards").select("id", count="exact").execute()
-    return response.count if response.count is not None else 0
-
-def load_cards_from_db(secilen_ders=None):
-    su_an = time.time()
-    query = supabase.table("cards").select("id, soru, cevap, durum, ders").lte("sonraki_tekrar", su_an)
+# Veritabanından Kullanıcı Verilerini Çekme Fonksiyonları
+def load_user_data(username):
+    cards_resp = supabase.table("cards").select("*").eq("username", username).execute()
+    stats_resp = supabase.table("stats").select("*").eq("username", username).execute()
     
-    if secilen_ders and secilen_ders != "Tümü":
-        query = query.eq("ders", secilen_ders)
+    if not stats_resp.data:
+        supabase.table("stats").insert({"username": username, "streak": 0, "son_calisma": "2000-01-01"}).execute()
+        user_stats = {"username": username, "streak": 0, "son_calisma": "2000-01-01"}
+    else:
+        user_stats = stats_resp.data[0]
         
-    response = query.execute()
-    return response.data if response.data else []
+    return cards_resp.data, user_stats
 
-def update_card_progress(card_id, buton_tipi):
-    response = supabase.table("cards").select("aralik").eq("id", card_id).execute()
-    if not response.data:
-        return
-        
-    mevcut_aralik = response.data[0]['aralik']
-    su_an = time.time()
-    
-    if buton_tipi == "Bilemedim":
-        yeni_aralik = 0
-        sonraki_tarih = su_an
-    elif buton_tipi == "Zordu":
-        yeni_aralik = max(1, mevcut_aralik)
-        sonraki_tarih = su_an + (yeni_aralik * 86400)
-    elif buton_tipi == "Kolaydı":
-        yeni_aralik = mevcut_aralik + 3 if mevcut_aralik == 0 else mevcut_aralik * 2
-        sonraki_tarih = su_an + (yeni_aralik * 86400)
-        
-    supabase.table("cards").update({
-        "aralik": yeni_aralik, 
-        "sonraki_tekrar": sonraki_tarih
-    }).eq("id", card_id).execute()
-
-def get_all_subjects():
-    response = supabase.table("cards").select("ders").execute()
-    if response.data:
-        dersler = list(set([row['ders'] for row in response.data]))
-        return dersler
-    return []
-
-# --- 3. API AYARLARI ---
-API_KEY = st.secrets["GEMINI_API_KEY"]
-client = genai.Client(api_key=API_KEY)
-
-# --- 4. UYGULAMA HAFIZASI ---
-if 'flashcards' not in st.session_state:
-    st.session_state.flashcards = load_cards_from_db() 
-if 'current_index' not in st.session_state:
-    st.session_state.current_index = 0
-if 'show_answer' not in st.session_state:
+# Verileri Yükle
+if "current_user" not in st.session_state or st.session_state.current_user != st.session_state.username:
+    cards, stats = load_user_data(st.session_state.username)
+    st.session_state.flashcards = cards
+    st.session_state.stats = stats
+    st.session_state.current_user = st.session_state.username
+    st.session_state.card_index = 0
     st.session_state.show_answer = False
 
-# --- YENİ TASARIM: ÜST BİLGİ PANELİ (SOL: BAŞLIK, SAĞ: MASKOT) ---
-col_sol, col_sag = st.columns([3, 1])
+# Ana Uygulama Ekranı
+st.title(f"🧠 {st.session_state.username.capitalize()} Profili")
 
-with col_sol:
-    st.title("Med Brain 🧠")
-    
-    mevcut_dersler = get_all_subjects()
-    if mevcut_dersler:
-        def ders_degisti():
-            st.session_state.current_index = 0
-            st.session_state.show_answer = False
-            st.session_state.flashcards = load_cards_from_db(st.session_state.secili_ders_kutusu)
+# Sol Menü Bilgileri
+st.sidebar.write(f"🔥 Güncel Seri: {st.session_state.stats.get('streak', 0)} Gün")
+st.sidebar.divider()
 
-        ders_secenekleri = ["Tümü"] + mevcut_dersler
-        st.selectbox("📚 Çalışılacak Dersi Seçin:", ders_secenekleri, key='secili_ders_kutusu', on_change=ders_degisti)
+# Yeni Kart Ekleme Bölümü
+with st.sidebar.expander("➕ Yeni Kart Ekle"):
+    yeni_soru = st.text_area("Soru:")
+    yeni_cevap = st.text_area("Cevap:")
+    yeni_ders = st.text_input("Ders (Örn: Anatomi):", value="Genel")
+    if st.button("Kartı Kaydet"):
+        if yeni_soru and yeni_cevap:
+            yeni_kart = {
+                "username": st.session_state.username,
+                "soru": yeni_soru,
+                "cevap": yeni_cevap,
+                "ders": yeni_ders
+            }
+            resp = supabase.table("cards").insert(yeni_kart).execute()
+            if resp.data:
+                st.success("Kart profilinize eklendi!")
+                st.session_state.flashcards.append(resp.data[0])
+        else:
+            st.error("Soru ve cevap alanları boş bırakılamaz.")
 
-with col_sag:
-    streak_sayisi, bugun_calisti_mi = get_streak_info()
-    
-    if streak_sayisi == 0 and not bugun_calisti_mi: 
-        st.subheader("Seri: 0🧊")
-        st.caption("Donuyorsun, hemen başla!")
-    else: 
-        st.subheader(f"Seri: {streak_sayisi}🔥")
-        st.caption("Alev alev devam!")
-
-st.divider()
-
-# --- 5. SOL MENÜ (SIDEBAR): SADECE FOTOĞRAF YÜKLEME ---
-with st.sidebar:
-    st.header("📸 Yeni Not Ekle")
-    ders_girdisi = st.text_input("Ders Adı (Örn: Anatomi, Biyokimya)", value="Genel")
-    uploaded_file = st.file_uploader("Bir fotoğraf yükleyin", type=["png", "jpg", "jpeg"])
-    
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Yüklenen Not", width='stretch') 
-        
-        if st.button("Soruları Üret 🚀"):
-            prompt = """
-            Bu görsel bir tıp öğrencisinin ders notudur. En önemli bilgileri tespit et ve Soru-Cevap formatında hazırla.
-            Eğer görsel çok karmaşıksa, el yazısı okunamayacak kadar kötüyse veya tıbbi terimleri çıkaramıyorsan SADECE "REJECT" yaz.
-            Eğer okuyabiliyorsan çıktıyı SADECE aşağıdaki gibi geçerli bir JSON formatında ver, başka hiçbir açıklama yazma:
-            [
-              {"soru": "1. soru metni", "cevap": "1. cevap metni"}
-            ]
-            """
-            with st.spinner("Not okunuyor..."):
-                try:
-                    response_flash = client.models.generate_content(
-                        model='gemini-3-flash-preview',
-                        contents=[prompt, image]
-                    )
-                    raw_text = response_flash.text.strip()
-                    if "REJECT" in raw_text:
-                        raise ValueError("Model okuyamadı.")
-                        
-                    raw_text = raw_text.replace('```json', '').replace('```', '').strip()
-                    yeni_kartlar = json.loads(raw_text)
-                    
-                    add_cards_to_db(yeni_kartlar, ders_girdisi)
-                    
-                    secili = st.session_state.get('secili_ders_kutusu', "Tümü")
-                    st.session_state.flashcards = load_cards_from_db(secili)
-                    st.success(f"Sorular '{ders_girdisi}' dersine eklendi!")
-                    time.sleep(2)
-                    st.rerun()
-                    
-                except Exception as e_flash:
-                    st.warning("Zorlu not, 2.5 modeline geçiliyor...")
-                    try:
-                        response_pro = client.models.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=[prompt, image]
-                        )
-                        raw_text_pro = response_pro.text.replace('```json', '').replace('```', '').strip()
-                        yeni_kartlar = json.loads(raw_text_pro)
-                        
-                        add_cards_to_db(yeni_kartlar, ders_girdisi)
-                        
-                        secili = st.session_state.get('secili_ders_kutusu', "Tümü")
-                        st.session_state.flashcards = load_cards_from_db(secili)
-                        st.success(f"Sorular '{ders_girdisi}' dersine eklendi!")
-                        time.sleep(2)
-                        st.rerun()
-
-                    except Exception as e_pro:
-                        st.error(f"Hata: {e_pro}")
-
-# --- 6. ANA EKRAN: FLASHCARD ÇALIŞMA ALANI ---
-if len(st.session_state.flashcards) > 0:
-    card = st.session_state.flashcards[0]
-    
-    st.markdown(f"### Kalan Kart: {len(st.session_state.flashcards)} 🏷️ *{card.get('ders', 'Genel')}*")
-    st.info(card["soru"])
-    
-    if st.button("🗑️ Bu Kartı Sil"):
-        delete_cards_from_db(card["id"]) 
-        st.session_state.flashcards.pop(0)
-        st.session_state.show_answer = False
-        st.success("Kart başarıyla silindi!")
-        time.sleep(1)
-        st.rerun()
-    
-    if not st.session_state.show_answer:
-        if st.button("Cevabı Gör 👁️"):
-            st.session_state.show_answer = True
-            st.rerun()
-    else:
-        st.success(card["cevap"])
-        st.write("Bu kart nasıldı:")
-        col1, col2, col3 = st.columns(3)
-        
-        if col1.button("🔴 Bilemedim"):
-            update_streak() 
-            update_card_progress(card["id"], "Bilemedim")
-            
-            aktif_kart = st.session_state.flashcards.pop(0)
-            st.session_state.flashcards.append(aktif_kart)
-            st.session_state.show_answer = False
-            st.rerun()
-            
-        if col2.button("🟡 Zordu"):
-            update_streak() 
-            update_card_progress(card["id"], "Zordu")
-            st.session_state.flashcards.pop(0)
-            st.session_state.show_answer = False
-            st.rerun()
-            
-        if col3.button("🟢 Kolaydı"):
-            update_streak() 
-            update_card_progress(card["id"], "Kolaydı")
-            st.session_state.flashcards.pop(0)
-            st.session_state.show_answer = False
-            st.rerun()
+# Kartları Gösterme Mantığı
+if not st.session_state.flashcards:
+    st.warning("Henüz bu profilde eklenmiş bir kart yok. Sol menüyü kullanarak ilk kartınızı ekleyebilirsiniz!")
 else:
-    if get_total_card_count() == 0:
-        st.info("👋 Med Brain'e Hoş Geldin! Şu an destende hiç kart yok. Sol menüden ilk tıp notunu yükleyerek maceraya başla! 🚀")
-    else:
-        st.success("Tebrikler! Bugünlük zamanı gelen tüm kartları bitirdiniz. 🎉 Mükemmel ilerliyorsun!")
+    if st.session_state.card_index >= len(st.session_state.flashcards):
+        st.session_state.card_index = 0
+
+    kart = st.session_state.flashcards[st.session_state.card_index]
+    
+    st.subheader(f"📚 Ders: {kart['ders']}")
+    
+    with st.container(border=True):
+        st.markdown(f"### **Soru:**\n{kart['soru']}")
+        
+        if st.session_state.show_answer:
+            st.divider()
+            st.markdown(f"### **Cevap:**\n{kart['cevap']}")
+
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("👁️ Cevabı Göster/Gizle"):
+            st.session_state.show_answer = not st.session_state.show_answer
+            st.rerun()
+            
+    with col2:
+        if st.button("✅ Bildim (Sonra Sor)"):
+            supabase.table("cards").update({"durum": "ogrenildi"}).eq("id", kart["id"]).execute()
+            
+            bugun = str(datetime.date.today())
+            if st.session_state.stats["son_calisma"] != bugun:
+                yeni_streak = st.session_state.stats["streak"] + 1
+                supabase.table("stats").update({"streak": yeni_streak, "son_calisma": bugun}).eq("username", st.session_state.username).execute()
+                st.session_state.stats["streak"] = yeni_streak
+                st.session_state.stats["son_calisma"] = bugun
+            
+            st.session_state.card_index = (st.session_state.card_index + 1) % len(st.session_state.flashcards)
+            st.session_state.show_answer = False
+            st.rerun()
+
+    with col3:
+        if st.button("❌ Bilemedim (Tekrar Göster)"):
+            st.session_state.card_index = (st.session_state.card_index + 1) % len(st.session_state.flashcards)
+            st.session_state.show_answer = False
+            st.rerun()
