@@ -133,4 +133,4 @@ else:
             
     with col2:
         if st.button("✅ Bildim (Sonra Sor)"):
-            supabase.table("cards").update({"durum": "ogren
+            supabase.table("cards").update({"durum": "ogrenildi"}).eq("id", kart["id"]).execute()
