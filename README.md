@@ -3,7 +3,7 @@ An AI-powered spaced repetition flashcard app for medical students, built with S
 MedBrain Flashcards
 Bu proje, tıp fakültesindeki yoğun ders yükünü ve karmaşık notları daha yönetilebilir hale getirmek için geliştirdiğim web tabanlı bir flashcard (çalışma kartı) uygulamasıdır.
 
-Sistemi aslında bir arkadaşımın çalışma sürecini kolaylaştırmak ve aralıklı tekrar yöntemini dijitalleştirmek amacıyla tasarladım. Uygulama temelde el yazısı veya dijital ders notlarının fotoğrafını analiz ederek, içindeki en kritik bilgileri otomatik olarak soru-cevap formatına dönüştürüyor.
+Sistemi aslında bir arkadaşımın çalışma sürecini kolaylaştırmak ve aralıklı tekrar yöntemini dijitalleştirmek amacıyla tasarladım. Uygulama temelde el yazısı veya dijital ders notlarının fotoğrafını ve pdf dosyalarını analiz ederek, içindeki en kritik bilgileri otomatik olarak soru-cevap formatına dönüştürüyor.
 
 Öne Çıkan Özellikler
 
