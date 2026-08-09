@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.x-FF4B4B.svg)
 ![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E.svg)
-![Gemini AI](https://img.shields.io/badge/Google_gemini-3-flash-preview-4285F4.svg)
+
 
 MedBrain is an AI-powered, multi-user flashcard application designed to help medical students (and learners of all kinds) study more efficiently. By simply uploading a photo of handwritten notes or a PDF of a lecture, MedBrain automatically extracts the most important information and converts it into active-recall Question & Answer flashcards.
 
