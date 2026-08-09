@@ -3,13 +3,13 @@
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.x-FF4B4B.svg)
 ![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E.svg)
-![Gemini AI](https://img.shields.io/badge/Google_Gemini-1.5_Flash-4285F4.svg)
+![Gemini AI](https://img.shields.io/badge/Google_gemini-3-flash-preview-4285F4.svg)
 
 MedBrain is an AI-powered, multi-user flashcard application designed to help medical students (and learners of all kinds) study more efficiently. By simply uploading a photo of handwritten notes or a PDF of a lecture, MedBrain automatically extracts the most important information and converts it into active-recall Question & Answer flashcards.
 
 ## ✨ Core Features
 
-- **🤖 AI-Powered Note Extraction:** Upload Images (JPG/PNG) or PDFs. Google's Gemini 1.5 Flash multimodal AI scans the document and automatically generates Q&A flashcards.
+- **🤖 AI-Powered Note Extraction:** Upload Images (JPG/PNG) or PDFs. Google's Gemini-3-flash-preview multimodal AI scans the document and automatically generates Q&A flashcards.
 - **👥 Multi-User Profiling:** Built-in session management allows multiple users to log in using a unique username. Each user has their own isolated deck of cards, study progress, and streaks.
 - **🔄 Spaced Repetition System (SRS):** An intelligent algorithm that schedules cards based on user feedback (`Know`, `Hard`, `Easy`), ensuring maximum retention.
 - **🔥 Daily Streak Tracker:** Gamifies the learning experience by tracking daily study streaks to keep users motivated.
@@ -29,7 +29,7 @@ MedBrain is an AI-powered, multi-user flashcard application designed to help med
 
 ### 3. Multimodal Parsing vs. Heavy OCR
 * **Problem:** Extracting text from uploaded PDFs typically requires heavy OCR libraries (like PyPDF2), which bloat the container and slow down processing.
-* **Solution:** Bypassed third-party parsers entirely by leveraging Gemini 1.5 Flash's native multimodal API. The app passes the raw byte stream directly to the LLM, significantly reducing dependencies and processing time.
+* **Solution:** Bypassed third-party parsers entirely by leveraging Gemini-3-flash-preview's native multimodal API. The app passes the raw byte stream directly to the LLM, significantly reducing dependencies and processing time.
 
 ---
 
