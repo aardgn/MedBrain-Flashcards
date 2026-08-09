@@ -16,7 +16,7 @@ st.sidebar.title("👤 Profil Girişi")
 username_input = st.sidebar.text_input("Kullanıcı Adınız:", value="").strip().lower()
 
 if not username_input:
-    st.title("Med Brain 🧠")
+    st.title("Medonie 🧠")
     st.info("👋 Hoş geldin! Çalışmaya başlamak için sol menüden kendine bir kullanıcı adı belirle veya mevcut adınızı gir.")
     st.stop()
 
@@ -135,7 +135,7 @@ if 'current_user' not in st.session_state or st.session_state.current_user != st
 col_sol, col_sag = st.columns([3, 1])
 
 with col_sol:
-    st.title(f"Med Brain 🧠 ({st.session_state.username.capitalize()})")
+    st.title(f"Medonie 🧠 ({st.session_state.username.capitalize()})")
     
     mevcut_dersler = get_all_subjects(st.session_state.username)
     if mevcut_dersler:
@@ -280,6 +280,6 @@ if len(st.session_state.flashcards) > 0:
             st.rerun()
 else:
     if get_total_card_count(st.session_state.username) == 0:
-        st.info(f"👋 Med Brain'e Hoş Geldin {st.session_state.username.capitalize()}! Şu an destende hiç kart yok. Sol menüden ilk tıp notunu veya PDF'ini yükleyerek maceraya başla! 🚀")
+        st.info(f"👋 Medonie'ye Hoş Geldin {st.session_state.username.capitalize()}! Şu an destende hiç kart yok. Sol menüden ilk tıp notunu veya PDF'ini yükleyerek maceraya başla! 🚀")
     else:
         st.success("Tebrikler! Bugünlük zamanı gelen tüm kartları bitirdiniz. 🎉 Mükemmel ilerliyorsun!")
