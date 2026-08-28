@@ -216,3 +216,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local environment overrides (at any depth)
+.env.local
+.env.*.local
+
+# JavaScript dependencies (at any depth)
+node_modules/
+
+# Keep the Next.js application's source library tracked
+!/frontend/lib/
+!/frontend/lib/**
