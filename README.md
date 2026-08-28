@@ -1,9 +1,5 @@
 # Medonie
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
-![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E.svg)
-
-
 > **Project status: Active development**
 >
 > Medonie is an unfinished project that I am actively building and refining. The core study workflow works, but the application is not production-ready and several features, migrations, and operational safeguards are still in progress.
