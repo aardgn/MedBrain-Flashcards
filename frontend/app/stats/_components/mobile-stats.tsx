@@ -43,7 +43,7 @@ export function MobileStats({ data, errorMessage }: MobileStatsProps) {
         <section className="mt-4 grid grid-cols-3 gap-2.5" aria-label="Stats özeti">
           <MobileStat icon={<DecksIcon className="size-6" />} label="Cards" value={data.totalReviews} />
           <MobileStat icon={<StatsIcon className="size-6" />} label="Accuracy" value={data.accuracy} suffix="%" />
-          <MobileStat icon={<span aria-hidden="true" className="text-2xl">🔥</span>} label="Streak" value={data.streak} />
+          <MobileStat icon={<span aria-hidden="true" className={`text-2xl ${(data.streak ?? 0) > 0 ? '' : 'grayscale opacity-50'}`}>🔥</span>} label="Streak" value={data.streak} />
         </section>
 
         <div className="mt-4 space-y-4">

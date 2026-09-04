@@ -76,4 +76,3 @@ I considered generating a username in the API route, removing the column immedia
 ## Current Engineering Focus
 
 The next phase is less about adding UI surface area and more about tightening system boundaries: completing the Streamlit-to-Next.js migration, validating calendar-day behavior for streaks, improving failure handling around AI generation, and documenting the database schema and deployment model. I am keeping incomplete features visible in the roadmap rather than presenting the repository as production-ready.
-

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { buildDecks, type DeckCardRow, type DeckSummary } from '@/lib/decks'
+import { resetExpiredStreak } from '@/lib/streak'
 import { createClient } from '@/lib/supabase/server'
 
 type DashboardStatsRow = {
@@ -52,6 +53,8 @@ export async function getDashboardData(): Promise<DashboardResult> {
 
   if (userError || !user) redirect('/')
 
+  const streakResetError = await resetExpiredStreak(supabase)
+
   const [cardsResult, statsResult] = await Promise.all([
     supabase.from('cards').select('id, ders, durum, sonraki_tekrar, aralik'),
     supabase.from('stats').select('streak, son_calisma'),
@@ -60,7 +63,7 @@ export async function getDashboardData(): Promise<DashboardResult> {
   const names = getUserNames(user.email, user.user_metadata as Record<string, unknown>)
   const cards = (cardsResult.data ?? []) as DeckCardRow[]
   const stats = (statsResult.data?.[0] ?? null) as DashboardStatsRow | null
-  const queryErrors = [cardsResult.error, statsResult.error].filter(Boolean)
+  const queryErrors = [streakResetError, cardsResult.error, statsResult.error].filter(Boolean)
 
   return {
     data: {

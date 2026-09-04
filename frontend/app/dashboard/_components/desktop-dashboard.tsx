@@ -60,6 +60,8 @@ function EmptyDecks() {
 }
 
 export function DesktopDashboard({ data, errorMessage }: DesktopDashboardProps) {
+  const hasActiveStreak = data.streak > 0
+
   return (
     <div className="hidden min-h-screen bg-[#fbfcfa] text-[#111915] lg:flex">
       <DesktopSidebar
@@ -70,7 +72,7 @@ export function DesktopDashboard({ data, errorMessage }: DesktopDashboardProps) 
       <div className="min-w-0 flex-1">
         <header className="flex h-24 items-center justify-end gap-7 border-b border-[#e7e9e3] bg-white/80 px-10">
           <div className="flex items-center gap-2.5 border-r border-[#e7e9e3] pr-7">
-            <FlameIcon className="size-8 text-[#f26f21]" />
+            <FlameIcon className={`size-8 ${hasActiveStreak ? 'text-[#f26f21]' : 'text-[#9ca39f]'}`} />
             <div>
               <p className="font-bold leading-tight">{data.streak}</p>
               <p className="text-sm text-[#5f6864]">day streak</p>
@@ -111,8 +113,8 @@ export function DesktopDashboard({ data, errorMessage }: DesktopDashboardProps) 
           </section>
 
           <section className="mb-7 flex items-center gap-5 rounded-3xl border border-[#e4e8e1] bg-white p-7 shadow-[0_8px_30px_rgba(32,64,48,0.06)]">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-[#fff0e8]">
-              <FlameIcon className="size-9 text-[#f26f21]" />
+            <div className={`flex size-16 items-center justify-center rounded-2xl ${hasActiveStreak ? 'bg-[#fff0e8]' : 'bg-[#eef0ed]'}`}>
+              <FlameIcon className={`size-9 ${hasActiveStreak ? 'text-[#f26f21]' : 'text-[#9ca39f]'}`} />
             </div>
             <div>
               <p className="font-medium text-[#69736e]">Day Streak</p>

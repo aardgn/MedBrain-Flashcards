@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
 
+import { resetExpiredStreak, STREAK_TIME_ZONE } from '@/lib/streak'
 import { createClient } from '@/lib/supabase/server'
 
 const DAY_IN_MILLISECONDS = 86_400_000
-const STATS_TIME_ZONE = 'Europe/Istanbul'
 
 type ReviewLogRow = {
   card_id: number | string
@@ -55,7 +55,7 @@ function numberValue(value: number | string | null) {
 
 function getDateKey(date: Date) {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: STATS_TIME_ZONE,
+    timeZone: STREAK_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -68,7 +68,7 @@ function getDateKey(date: Date) {
 
 function getShortDayLabel(date: Date) {
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: STATS_TIME_ZONE,
+    timeZone: STREAK_TIME_ZONE,
     weekday: 'short',
   }).format(date)
 }
@@ -114,6 +114,7 @@ export async function getStatsData(): Promise<StatsResult> {
   if (userError || !user) redirect('/')
 
   const now = new Date()
+  const streakResetError = await resetExpiredStreak(supabase, now)
   const lastSevenDays = getLastSevenDays(now)
   const includedDateKeys = new Set(lastSevenDays.map((day) => day.dateKey))
 
@@ -175,7 +176,12 @@ export async function getStatsData(): Promise<StatsResult> {
       right.reviewCount - left.reviewCount || left.name.localeCompare(right.name, 'tr'),
   )
 
-  const queryErrors = [logsResult.error, cardsResult.error, streakResult.error].filter(Boolean)
+  const queryErrors = [
+    streakResetError,
+    logsResult.error,
+    cardsResult.error,
+    streakResult.error,
+  ].filter(Boolean)
 
   return {
     data: {

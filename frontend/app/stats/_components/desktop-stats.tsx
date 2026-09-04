@@ -9,8 +9,8 @@ type DesktopStatsProps = {
   errorMessage: string | null
 }
 
-function FlameIcon() {
-  return <span aria-hidden="true" className="text-3xl">🔥</span>
+function FlameIcon({ active }: { active: boolean }) {
+  return <span aria-hidden="true" className={`text-3xl ${active ? '' : 'grayscale opacity-50'}`}>🔥</span>
 }
 
 function RangeSelector() {
@@ -88,7 +88,7 @@ export function DesktopStats({ data, errorMessage }: DesktopStatsProps) {
           <section className="mt-8 grid grid-cols-3 gap-5" aria-label="Stats özeti">
             <StatCard icon={<DecksIcon className="size-7" />} label="Cards Studied" value={data.totalReviews} />
             <StatCard icon={<StatsIcon className="size-7" />} label="Accuracy" value={data.accuracy} suffix="%" />
-            <StatCard icon={<FlameIcon />} label="Current Streak" value={data.streak} suffix=" days" />
+            <StatCard icon={<FlameIcon active={(data.streak ?? 0) > 0} />} label="Current Streak" value={data.streak} suffix=" days" />
           </section>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(340px,0.85fr)]">

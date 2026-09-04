@@ -61,6 +61,7 @@ function FeaturedDeck({ deck }: { deck: DashboardDeck | undefined }) {
 
 export function MobileDashboard({ data, errorMessage }: MobileDashboardProps) {
   const featuredDeck = data.decks[0]
+  const hasActiveStreak = data.streak > 0
   const recentDecks = data.decks.slice(0, 3)
 
   return (
@@ -88,8 +89,8 @@ export function MobileDashboard({ data, errorMessage }: MobileDashboardProps) {
               <h1 className="text-3xl font-bold tracking-tight">Hi {data.firstName} <span aria-hidden="true">👋</span></h1>
               <p className="mt-2 text-[#58635e]">Let&apos;s keep building your knowledge.</p>
             </div>
-            <div className="flex items-center gap-2 rounded-full bg-[#fff4eb] px-3 py-2 text-sm font-semibold text-[#6f3a20]">
-              <FlameIcon className="size-5 text-[#f26f21]" /> {data.streak} day streak
+            <div className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold ${hasActiveStreak ? 'bg-[#fff4eb] text-[#6f3a20]' : 'bg-[#eef0ed] text-[#747d78]'}`}>
+              <FlameIcon className={`size-5 ${hasActiveStreak ? 'text-[#f26f21]' : 'text-[#9ca39f]'}`} /> {data.streak} day streak
             </div>
           </div>
         </section>
