@@ -158,19 +158,35 @@ export function DesktopDashboard({ data, errorMessage }: DesktopDashboardProps) 
               <h2 className="text-2xl font-bold">Quick Actions</h2>
               <div className="mt-5 space-y-4">
                 {[
-                  { title: 'Upload Material', subtitle: 'PDF, PNG, JPG', href: '/cards/new', Icon: UploadIcon },
-                  { title: 'My Decks', subtitle: 'View all your decks', href: '/cards', Icon: DecksIcon },
-                  { title: 'AI Tutor', subtitle: 'Ask anything', href: '/', Icon: SparklesIcon },
-                ].map(({ title, subtitle, href, Icon }) => (
-                  <Link key={title} href={href} className="flex items-center gap-5 rounded-2xl border border-[#e6e8e2] p-5 transition hover:border-[#bbcabf] hover:bg-[#fbfcf9]">
-                    <Icon className="size-10 shrink-0 text-[#07563f]" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold">{title}</p>
-                      <p className="mt-1 text-sm text-[#6d7772]">{subtitle}</p>
+                  { title: 'Upload Material', subtitle: 'PDF, PNG, JPG', href: '/cards/new', Icon: UploadIcon, disabled: false },
+                  { title: 'My Decks', subtitle: 'View all your decks', href: '/cards', Icon: DecksIcon, disabled: false },
+                  { title: 'AI Tutor', subtitle: 'Coming soon', href: '', Icon: SparklesIcon, disabled: true },
+                ].map(({ title, subtitle, href, Icon, disabled }) => {
+                  const content = (
+                    <>
+                      <Icon className={`size-10 shrink-0 ${disabled ? 'text-[#9aa29e]' : 'text-[#07563f]'}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold">{title}</p>
+                        <p className="mt-1 text-sm text-[#6d7772]">{subtitle}</p>
+                      </div>
+                      {disabled ? (
+                        <span className="rounded-full bg-[#eef0ed] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#77807b]">Soon</span>
+                      ) : (
+                        <ArrowRightIcon className="size-5" />
+                      )}
+                    </>
+                  )
+
+                  return disabled ? (
+                    <div key={title} aria-disabled="true" className="flex cursor-not-allowed items-center gap-5 rounded-2xl border border-[#e6e8e2] bg-[#fafbf9] p-5 text-[#8a928e] opacity-75">
+                      {content}
                     </div>
-                    <ArrowRightIcon className="size-5" />
-                  </Link>
-                ))}
+                  ) : (
+                    <Link key={title} href={href} className="flex items-center gap-5 rounded-2xl border border-[#e6e8e2] p-5 transition hover:border-[#bbcabf] hover:bg-[#fbfcf9]">
+                      {content}
+                    </Link>
+                  )
+                })}
               </div>
             </section>
           </div>

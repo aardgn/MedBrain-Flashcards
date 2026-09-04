@@ -1,10 +1,12 @@
 import { parseGeneratedCards, GeneratedCardsValidationError } from '@/lib/generated-cards'
 import { FLASHCARD_PROMPT } from '@/lib/prompts'
+import { getStreakDateKey } from '@/lib/streak'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
+const DEFAULT_DAILY_UPLOAD_LIMIT = 15
 const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
   'image/png',
@@ -20,7 +22,23 @@ type GeminiResponse = {
   }>
 }
 
-class GeminiRequestError extends Error {}
+class GeminiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message)
+    this.name = 'GeminiRequestError'
+  }
+}
+
+function getDailyUploadLimit() {
+  const configuredLimit = Number.parseInt(process.env.DAILY_UPLOAD_LIMIT ?? '', 10)
+
+  return Number.isSafeInteger(configuredLimit) && configuredLimit > 0
+    ? configuredLimit
+    : DEFAULT_DAILY_UPLOAD_LIMIT
+}
 
 function jsonError(message: string, status: number) {
   return Response.json({ success: false, message }, { status })
@@ -64,7 +82,10 @@ async function generateWithModel({
   )
 
   if (!response.ok) {
-    throw new GeminiRequestError(`Gemini modeli ${response.status} durum kodu döndürdü.`)
+    throw new GeminiRequestError(
+      `Gemini modeli ${response.status} durum kodu döndürdü.`,
+      response.status,
+    )
   }
 
   const payload = (await response.json()) as GeminiResponse
@@ -89,6 +110,29 @@ export async function POST(request: Request) {
 
   if (userError || !user) {
     return jsonError('Bu işlem için giriş yapmalısınız.', 401)
+  }
+
+  const dailyUploadLimit = getDailyUploadLimit()
+  const istanbulDay = getStreakDateKey(new Date())
+  const usageResult = await supabase
+    .from('card_generation_logs')
+    .select('id', { count: 'exact', head: true })
+    .eq('istanbul_day', istanbulDay)
+
+  if (usageResult.error) {
+    console.error('[generate-cards] Daily usage check failed', {
+      message: usageResult.error.message,
+      code: usageResult.error.code,
+      details: usageResult.error.details,
+    })
+    return jsonError('Günlük kullanım bilgisi kontrol edilemedi. Lütfen tekrar deneyin.', 500)
+  }
+
+  if ((usageResult.count ?? 0) >= dailyUploadLimit) {
+    return jsonError(
+      `Günlük yükleme limitine ulaştınız (${dailyUploadLimit}/gün), yarın tekrar deneyebilirsiniz.`,
+      429,
+    )
   }
 
   let formData: FormData
@@ -120,6 +164,7 @@ export async function POST(request: Request) {
 
   let cards: ReturnType<typeof parseGeneratedCards> | null = null
   let lastError: unknown
+  let quotaExceeded = false
 
   for (const model of [primaryModel, fallbackModel]) {
     try {
@@ -132,10 +177,17 @@ export async function POST(request: Request) {
       break
     } catch (error) {
       lastError = error
+      if (error instanceof GeminiRequestError && error.status === 429) {
+        quotaExceeded = true
+      }
     }
   }
 
   if (!cards) {
+    if (quotaExceeded) {
+      return jsonError('Şu anda yoğunluk var, birkaç dakika sonra tekrar deneyin.', 503)
+    }
+
     const message =
       lastError instanceof GeneratedCardsValidationError
         ? lastError.message
@@ -171,6 +223,22 @@ export async function POST(request: Request) {
         debug,
       },
       { status: 500 },
+    )
+  }
+
+  const usageLogResult = await supabase.from('card_generation_logs').insert({
+    user_id: user.id,
+  })
+
+  if (usageLogResult.error) {
+    console.error('[generate-cards] Daily usage log insert failed', {
+      message: usageLogResult.error.message,
+      code: usageLogResult.error.code,
+      details: usageLogResult.error.details,
+    })
+    return jsonError(
+      'Kartlar kaydedildi ancak kullanım kaydı oluşturulamadı. Lütfen destek ekibine bildirin.',
+      500,
     )
   }
 

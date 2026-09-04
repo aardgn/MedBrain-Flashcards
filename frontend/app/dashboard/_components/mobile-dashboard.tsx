@@ -104,17 +104,33 @@ export function MobileDashboard({ data, errorMessage }: MobileDashboardProps) {
           <h2 className="mb-3 text-lg font-bold">Quick Actions</h2>
           <div className="grid grid-cols-3 gap-2.5">
             {[
-              { title: 'Upload Material', subtitle: 'PDF, PNG, JPG', href: '/cards/new', Icon: UploadIcon },
-              { title: 'My Decks', subtitle: 'View all decks', href: '/cards', Icon: DecksIcon },
-              { title: 'AI Tutor', subtitle: 'Ask anything', href: '/', Icon: SparklesIcon },
-            ].map(({ title, subtitle, href, Icon }) => (
-              <Link key={title} href={href} className="flex min-h-36 flex-col rounded-2xl border border-[#e6e8e2] bg-white p-3.5 shadow-[0_5px_18px_rgba(32,64,48,0.05)]">
-                <Icon className="size-8 text-[#07563f]" />
-                <p className="mt-4 text-sm font-bold leading-tight">{title}</p>
-                <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-[#727b77]">{subtitle}</p>
-                <ArrowRightIcon className="mt-auto ml-auto size-4" />
-              </Link>
-            ))}
+              { title: 'Upload Material', subtitle: 'PDF, PNG, JPG', href: '/cards/new', Icon: UploadIcon, disabled: false },
+              { title: 'My Decks', subtitle: 'View all decks', href: '/cards', Icon: DecksIcon, disabled: false },
+              { title: 'AI Tutor', subtitle: 'Coming soon', href: '', Icon: SparklesIcon, disabled: true },
+            ].map(({ title, subtitle, href, Icon, disabled }) => {
+              const content = (
+                <>
+                  <Icon className={`size-8 ${disabled ? 'text-[#9aa29e]' : 'text-[#07563f]'}`} />
+                  <p className="mt-4 text-sm font-bold leading-tight">{title}</p>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-[#727b77]">{subtitle}</p>
+                  {disabled ? (
+                    <span className="mt-auto self-end rounded-full bg-[#eef0ed] px-2 py-1 text-[8px] font-bold uppercase tracking-wide text-[#77807b]">Soon</span>
+                  ) : (
+                    <ArrowRightIcon className="mt-auto ml-auto size-4" />
+                  )}
+                </>
+              )
+
+              return disabled ? (
+                <div key={title} aria-disabled="true" className="flex min-h-36 cursor-not-allowed flex-col rounded-2xl border border-[#e6e8e2] bg-[#fafbf9] p-3.5 text-[#8a928e] opacity-75 shadow-[0_5px_18px_rgba(32,64,48,0.04)]">
+                  {content}
+                </div>
+              ) : (
+                <Link key={title} href={href} className="flex min-h-36 flex-col rounded-2xl border border-[#e6e8e2] bg-white p-3.5 shadow-[0_5px_18px_rgba(32,64,48,0.05)]">
+                  {content}
+                </Link>
+              )
+            })}
           </div>
         </section>
 
