@@ -23,6 +23,7 @@ export function StudyActivityChart({ data, compact = false }: ChartProps) {
   const chartBottom = height - 42
   const chartHeight = chartBottom - chartTop
   const maxCount = Math.max(...data.map((day) => day.count))
+  const chartMax = maxCount * 1.2
   const columnWidth = width / data.length
   const barWidth = Math.min(46, columnWidth * 0.48)
 
@@ -34,7 +35,7 @@ export function StudyActivityChart({ data, compact = false }: ChartProps) {
       })}
       {data.map((day, index) => {
         const x = index * columnWidth + columnWidth / 2
-        const barHeight = (day.count / maxCount) * chartHeight
+        const barHeight = (day.count / chartMax) * chartHeight
         return (
           <g key={day.dateKey}>
             <rect x={x - barWidth / 2} y={chartBottom - barHeight} width={barWidth} height={barHeight} rx="7" fill="#17684f" />
